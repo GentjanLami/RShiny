@@ -1,0 +1,134 @@
+---
+title: "Analyse des Tremblements de Terre 2000 - 2020"
+author: "Gentjan Lami"
+date: "1/17/2021"
+output:
+  html_document:
+    df_print: paged
+  word_document: default
+  pdf_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(ggplot2)
+#library(plyr)
+library(magrittr) 
+library(dplyr)    
+library(corrplot)
+library(GGally)
+```
+
+Je vais représenter mon jeu de données des tremblements de terre de magnitude supérieure à 6 survenus entre 2000 et 2020.
+
+## 1. Presentation de donnees 
+
+<p>
+  - Nombres d'invidus : 578
+  - Nombres de variables:  2 Qualitative et 3 Quantitative 
+      - Pays
+      - L'année
+      - Magnitude
+      - Profondeur
+      - Décès
+</p>     
+    
+      
+  Afin de traduire les noms des colonnes on cree un vecteur avec les noms de celles-ci en francais.
+
+```{r message=FALSE,comment=NA}
+  NomColonnes <- c("Annee","Pays","Magnitude","Profondeur","Deces")
+  Data <- read.csv('D:/Pau/BIG DATA/Logiciel Statistiques/R/earthq.csv')
+  names(Data) <-   NomColonnes
+  summary(Data)
+```     
+
+
+<p>Changement de valuer NA laquelle represente l'occcasion quand il n'avait pas des deces avec 0 et montrons la tete de jeu de donnees.</p>
+
+```{r message=FALSE,comment=NA}
+Data[is.na(Data)] <- 0
+knitr::kable(head(Data), align = "lccrr")
+```
+## 2. Analyse unvariée
+
+<p> Je vais commencer à représenter les jeu de données au l'histogramme, boîtes à moustaches,graph et tableau. </p>
+
+### 2.1 Histogramme
+
+<h5> Voyons la densite de frequence pour les 3 variables quantitative.</h5>
+
+```{r message=FALSE,comment=NA}
+  hist(Data$Magnitude,probability = TRUE,xlab = 'Magnitude',ylab = "Densite de frequence",main='Densite de freq pour Magnitude')
+ dens <- density(Data$Magnitude)
+ lines(dens, col= 'red',lwd=2)
+```
+```{r message=FALSE,comment=NA}
+  hist(Data$Profondeur,probability = TRUE,xlab = 'Profondeur (km)',ylab = "Densite de frequence",main='Densite de freq pour Profondeur')
+ dens <- density(Data$Profondeur)
+ lines(dens, col= 'red',lwd=2)
+```
+
+### 2.2 Boites a moustache
+<h5> Je groupe par 2 les années pour ne pas avoir trop de granularite</h5>
+
+```{r message=FALSE,comment=NA}
+Data %>% mutate(anneeAppariee = (Annee %/% 2) * 2) %>% with(boxplot(Magnitude~anneeAppariee))
+```
+
+``` {r  message=FALSE,comment=NA}
+Data %>% mutate(anneeAppariee = (Annee %/% 2) * 2) %>% with(boxplot(Profondeur~anneeAppariee))
+
+```
+### 2.3 Plot Graph
+
+<h4>Les nombres de deces par annee</h4>
+``` {r message=FALSE,comment=NA} 
+Data %>% group_by(Annee) %>% summarise(TotalDeces=sum(Deces)) %>% with(plot(Annee,TotalDeces, type="l", col="black", lwd=1, xlab="Annee", ylab="TotalDeces", main="Nombre de deces par an"))
+
+```
+<h4>Moyenne magnitude de tremblements de terres par annee</h4>
+
+``` {r message=FALSE,comment=NA} 
+Data %>% group_by(Annee) %>% summarise(AvgMagnitude=mean(Magnitude)) %>% with(plot(Annee,AvgMagnitude, type="l", col="black", lwd=1, xlab="Annee", ylab="moyMagnitude", main="Moyenne Magnitude par Annee"))
+
+```
+
+### 2.4 Table 
+<h4>Les 10 pays avec le plus deces entre 2000-2020</h4>
+
+``` {r message=FALSE,comment=NA}
+TopDix <-Data %>% group_by(Pays) %>% summarise(total_Deces=sum(Deces)) %>% arrange(desc(total_Deces)) %>% top_n(10) %>% select(Pays,total_Deces)
+knitr::kable(TopDix, align = "lccrr")
+```
+
+## 3. Analyse bivariee
+<h4>Représentons les nuages de variables quantitatives et étudiéra les corrélations.</h4>
+
+### 3.1 Nuages de points 
+
+<h5>Voyons le corralation entre le donnees </h5>
+``` {r message=FALSE,comment=NA}
+Data %>% ggpairs(.,
+               columns = 3:5, 
+               mapping = ggplot2::aes(colour='Deces'))
+
+```
+
+### 3.2 Corralation
+```  {r message=FALSE,comment=NA}
+par(mfrow=c(3,1))
+#class <- unique(Data$Pays)
+class <- c("CHINA","IRAN","TURKEY")
+for (i in class){
+  indx <- which(Data$Pays== i)
+  mat.cor <- cor(x = Data[indx,c('Deces','Profondeur','Magnitude')])
+  corrplot(mat.cor, method = "color", addCoef.col="grey", order = "AOE",number.cex=0.75)
+}
+```
+<h1>References </h1>
+
+<h2> https://www.rdocumentation.org/ </h2>
+
+<h2>Lien de jeu de donnees: 
+https://www.ngdc.noaa.gov/hazel/view/hazards/earthquake/search </h2>
